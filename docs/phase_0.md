@@ -4,7 +4,9 @@ _Warning_: This a work in progress document with many broken links, some unfinis
 
 ## Introduction
 
-This document is an aid to the specification of the [state transition function](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-chain-state-transition-function) and accompanying [data structures](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#containers) for Phase 0 - The Beacon Chain -- the core system level chain at the heart of Ethereum 2.0. The [primary Phase 0 specification](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md) is particularly terse, only defining much of the functionality via python code and comments. This document aims to provide a more verbose version of the specification, especially aimed at helping onboard new contributors to Ethereum 2.0.
+This document is an aid to the specification of the [state transition function](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-chain-state-transition-function) and accompanying [data structures](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#containers) for Phase 0 - The Beacon Chain -- the core system level chain at the heart of Ethereum 2.0. 
+
+The [primary Phase 0 specification](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md) is particularly terse, only defining much of the functionality via python code and comments. This document aims to provide a more verbose version of the specification, primarily aimed at helping onboard new contributors to Ethereum 2.0.
 
 ## Table of contents
 
@@ -12,51 +14,115 @@ This document is an aid to the specification of the [state transition function](
 
 ## High level overview
 
-The beacon chain is the core system-level blockchain for Ethereum 2.0. The name comes from that fact that it serves as a random beacon, but could just as easily be called the "system chain", "spine chain", etc. This chain stores and manages the registry of validators in which the validators are assigned their _duties_: perform a protocol level _RNG_, _progress the beacon chain_, _vote on the head_ of the chain for the fork choice, _finalize checkpoints_, and _link and vote in transitions/data of shard chains_. The beacon chain is both the brains behind the operation and the scaffolding upon which the rest of the sharded system is built.
+The beacon chain is the core system-level blockchain for Ethereum 2.0. The name has its origins in the idea of a [random beacon](https://csrc.nist.gov/projects/interoperable-randomness-beacons)-- a beacon that provides a source of randomness to the rest of the system -- but it could just as easily have been called the "system chain", "spine chain", or something similar.
+
+A major part of the work of the beacon chain is storing and managing the registry of validators -- the set of nodes that have placed the required stake of 32 Ether, and who are responsible for running the Ethereum 2.0 system.
+
+This registry is used to:
+
+- Assign validators their duties
+- Finalize checkpoints
+- Perform a protocol level random number generation (RNG)
+- Progress the  beacon chain
+- Vote on the head of the chain for the fork choice
+- Finalize checkpoints
+- Link and vote in transitions/data of shard chains_
+
+The beacon chain is both the brains behind the operation and the scaffolding upon which the rest of the sharded system is built.
 
 <!-- TODO: diagram of beacon chain, shards, shard transitions -->
 
-The beacon chain's state ([`BeaconState`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-state)) is the core object around which the specification is built. The `BeaconState` encapsulates all of the information pertaining to: who the validators are, in what state each of them is in, which chain in the block tree this state belongs to, and a hash-reference to the Ethereum 1 chain.
+The beacon chain's state ([`BeaconState`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-state)) is the core object around which the specification is built.  In addition to maintaining a hash-reference to the Ethereum 1 chain, the `BeaconState` encapsulates all of the information relating to:
 
-The linking in of shard chains has evolved over time from including in a data root, to linking in more elaborate transition data at a per-block pace for all shards. The attested inclusion of a shard transition is called a "crosslink". Cross-shard communication UX here improved, but required a reduction of initial shard count. This is offset by an increase of other parameters. Find a discussion of the new shard chain/crosslink structure [here](https://notes.ethereum.org/@vbuterin/HkiULaluS).
+- Who the validators are
+- Which state the validators are in
+- Which chain in the block tree this state belongs to
 
-Beginning with the genesis state, the post state of a block is considered valid if it passes all of the guards within the state transition function. Thus, the precondition of a block is recursively defined as being a valid postcondition of running the state transition function on the previous block and its state. And this continues all the way back to the genesis state.
+> Note: while there are several possible states a validator can be in, only those marked as **active** can take part in the Ethereum 2.0 protocol. This is why it's important to keep track of which state validators are in.
+
+The linking in of shard chains has evolved over time from including a data root, to linking in more elaborate transition data at a per-block pace for all shards.
+
+Improving the UX of cross-shard communication, has required a reduction in the initial shard count (from 1024 to 64). However this has been offset by an increase in other parameters -- such as increasing the maximum number of shards per slot from 16 to 64.
+
+You can find a discussion of the new shard chain/crosslink structure [here](https://notes.ethereum.org/@vbuterin/HkiULaluS).
+
+> Note: the attested inclusion of a shard transition is called a "crosslink".
+
+To enable state transitions, the beacon chain has a `state_transition` function which takes as input a `BeaconState` (pre state) and a `BeaconBlock` and returns a new beacon state (what we call a post state).
+
+Beginning with the genesis state, the post state of a block is considered valid if it passes all of the guards within the `state_transition` function.
+
+> Note: the pre state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
 
 ### Fork Choice Rule
 
-Given a block tree, the [fork choice rule](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/fork-choice.md) provides a single chain (the canonical chain) and resulting state based upon recent messages from validators. The fork choice rule consumes the block-tree along with the set of most recent attestations from the validator set and identifies a block as the current head of the chain.
+Given a block tree, the [fork choice rule](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/fork-choice.md) provides a single chain (the canonical chain) and resulting state based upon recent messages from validators.
 
-LMD GHOST ("Latest Message Driven Greedy Heaviest-Observed Sub-Tree"), the fork choice rule of Eth2.0, considers which block the latest attestation from each validator points to and uses this to calculate the total balance that recursively attests to each block in the tree. This is done by setting the weight of a node in the tree to be the sum of the balances of the validators whose latest attestations were for that node or any descendent of that node. The GHOST algorithm then starts at the base of the tree, selecting the child of the current node with the heaviest weight until reaching a leaf node. This leaf node is the head of the chain and recursively defines the canonical chain.
+The fork choice rule consumes the block-tree along with the set of most recent attestations from active validators, and identifies a block as the current head of the chain.
+
+> Note: an attestation is a vote for a block proposal
+
+LMD GHOST ("Latest Message Driven Greedy Heaviest-Observed Sub-Tree"), the fork choice rule of Eth2.0, considers which block the latest attestation from each validator points to and uses this to calculate the total balance that recursively attests to each block in the tree. 
+
+This is done by setting the weight of a node in the tree to be the sum of the balances of the validators whose latest attestations were for that node or any descendent of that node.
+
+The GHOST algorithm then starts at the base of the tree, selecting the child of the current node with the heaviest weight until reaching a leaf node. This leaf node is the head of the chain and recursively defines the canonical chain.
 
 Concretely, validators are given the opportunity to produce a single [attestation](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) during an assigned slot at each epoch. The committed to `attestation.data.beacon_block_root` serves as a fork choice vote. A view takes into account all of the most recent of these votes from the current active validator set when computing the fork choice.
 
 ### Finality
 
-The fork choice rule allows us to choose a single canonical blockchain through the block tree whereas "finality" provides guarantees that certain blocks will remain within the canonical chain. The beacon chain uses a [modified version of Casper FFG](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf) for finality (read original Casper FFG paper for basic concepts [here](https://arxiv.org/pdf/1710.09437.pdf). Casper provides "accountable safety" that certain blocks will always remain in the canonical chain unless some threshold of validators burn their staked capital. This is a "crypto-economic" claim of safety rather than a more traditional safety found in traditional distributed systems consensus algorithms.
+In addition to voting on the canonical chain, validators also contribute to deciding finality of blocks --  a process that tells us when a Beacon block can be considered final and non-revertible.
 
-Concretely, validators are given the opportunity to produce a single [attestation](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) during an assigned slot at each epoch. The committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
+In other words, whereas the fork choice rule allows us to choose a single canonical blockchain through the block tree, finality provides guarantees that certain blocks will remain within the canonical chain.
+
+The beacon chain uses a [modified version of Casper FFG](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf) for finality (read original Casper FFG paper for basic concepts [here](https://arxiv.org/pdf/1710.09437.pdf).
+
+Casper provides "accountable safety" that certain blocks will always remain in the canonical chain unless some threshold of validators burn their staked capital. This is a "crypto-economic" claim of safety rather than a more traditional safety found in traditional distributed systems consensus algorithms.
+
+Concretely, in order to help finalize blocks, validators are given the opportunity to produce a single [attestation](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) during an assigned slot at each epoch -- where an epoch is defined as the span of blocks between checkpoints.
+
+> Note: the committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
 
 ### Shard transitions
 
-_Shards and crosslinks are not currently contained within the Phase 0 beacon chain. They are the major Phase 1 milestone. A brief discussion is included here for a more complete view._
+_Shards and crosslinks are not currently contained within the Phase 0 beacon chain. They are the major Phase 1 milestone. A brief discussion is included here in order to provide a more complete view._
 
 To the Beacon Chain, shard transitions are small packages that reference the progression of a shard chain. These are voted on by attestations, and included (via attestations) into the Beacon Chain by block producers.
 
-Crosslinks, references of shard transitions and data, are formed to by committees as part of their validator duties. The latest successful crosslink of each shard serves as the root for the respective shard chain fork choice. Through these crosslinks, asynchronous communication between shards is enabled on layer 1. In the normal case, each shard can be crosslinked into the beacon chain once per slot (with a low validator count to preserve safe size of committees, this can at times be once every `N > 1` slots).
+Crosslinks, references of shard transitions and data, are formed by committees as part of their validator duties. The latest successful crosslink of each shard serves as the root for that shard chain's fork choice. 
+
+Through these crosslinks, asynchronous communication between shards is made possible on layer 1. 
+
+In the normal case, each shard can be crosslinked into the beacon chain once per slot. However, if the validator count is low, crosslinks may occur less frequently (this is to preserve safe size of committees).
 
 ### Validator responsibilities
 
 A detailed discussion of the responsibilities of validators in phase 0 can be found [here](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/validator.md#beacon-chain-responsibilities).
 
-The three primary responsibilities in phase 0 are (1) attesting to the beacon chain once per epoch, (2) sometimes being called upon to aggregate attestations from validators in the same committee and (3) infrequently creating beacon blocks when selected.
+The three primary responsibilities in phase 0 are:
 
-Validators are split into "beacon committees" at each epoch, defined 1 epoch in advance to allow for preparation. Each committee is assigned to a slot (and shard in Phase 1). Each validator in the committee attests to the head of the beacon chain (and the recent data of the shard in Phase 1) at the assigned slot. A subset of the beacon committee is selected to aggregate attestations of similar `AttestationData` and to re-broadcast these aggregates to a global gossip channel for wide dissemination.
+1. Attesting to the beacon chain (once per epoch).
 
-At each slot, a single beacon block proposer is selected (via `get_beacon_proposer_index`) from one of the active validators. Based on the Beacon RNG, committees are randomly shuffled, and proposers are randomly picked. Proposal assignments are only known within the current epoch, but even then, any amount of public lookahead on block production is cause for DoS concern. Techniques for single secret leader election are being investigated for integration in subsequent phases of development. [This](https://eprint.iacr.org/2020/025.pdf) is an example of one such proposal.
+2. Aggregating attestations from validators in the same committee (occasionally).
+
+3. Creating beacon blocks when selected (infrequently).
+
+Validators are split into "beacon committees" at each epoch (defined 1 epoch in advance to allow for preparation). Each committee is assigned to a slot (and shard in Phase 1). And each validator in the committee attests to the head of the beacon chain (and the recent data of their assigned shard) at their assigned slot.
+
+In addition, a subset of the beacon committee is selected to aggregate attestations of similar `AttestationData` and to re-broadcast these aggregates to a global gossip channel for wider dissemination.
+
+At each slot, a single beacon block proposer is selected (via `get_beacon_proposer_index`) from one of the active validators. Based on the Beacon RNG, committees are randomly shuffled, and proposers are randomly picked. Proposal assignments are only known within the current epoch, but even then, any amount of public lookahead on block production is cause for DoS concern.
+
+Techniques for single secret leader election are being investigated for integration in subsequent phases of development. [This](https://eprint.iacr.org/2020/025.pdf) is an example of one such proposal.
 
 Validators gain rewards by regularly attesting to the canonical beacon chain and incur penalties if they fail to do so. Proposers gain rewards for inclusion of attestations in block proposals.
 
-In Phase 0, a validator can be _slashed_ (a more severe penalty) if they violate the Casper FFG rules or if they create two beacon blocks in one epoch. Slashings and other events may disable a validator from participating, but do not immediately re-assign committees/shuffling. Stability of responsibilities during the epoch is prioritized to ensure sufficient lookahead on duties. Slashings are like normal voluntary exits, except that their withdrawal is delayed, and penalties are applied based on total slashings at the time. The more validators coordinate in bad behavior, the more slashings, and the more severe the penalties. See `process_slashings`.
+In Phase 0, a validator can be _slashed_ (a more severe penalty) if they violate the Casper FFG rules or if they create two beacon blocks in one epoch.
+
+Slashings and other events may prevent a validator from participating, but do not immediately result in the re-assignment of committees/shuffling. This is to ensure the stability of responsibilities during each epoch -- stability needs to be prioritized to ensure sufficient lookahead on duties.
+
+Slashings are like normal voluntary exits, except that their withdrawal is delayed, and penalties are applied (based on total slashings at the time). The more validators coordinate in bad behavior, the more slashings, and the more severe the penalties (see `process_slashings`).
 
 More details on slashing from a validator perspective can be found [here](https://github.com/ethereum/eth2.0-specs/blob/master/specs/validator/0_beacon-chain-validator.md#how-to-avoid-slashing).
 
@@ -64,18 +130,23 @@ More details on slashing from a validator perspective can be found [here](https:
 
 ### Constants
 
-[Constants](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#constants) are global parameters that are not meant to change, even between chains, but instead document numbers used in different parts of the specification.
+[Constants](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#constants) are global parameters that are not meant to change, even between chains. They document numbers used in different parts of the specification.
 
 ### Configurables
 
 [Configurable global parameters](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#configuration) are used to enable testnets to experiment, avoid collisions, and provide the necessary flexibility in development.
 
-The philosophy with configuration is that changes to values should only be between chains, not over time. Instead, additional constants can be introduced for changed functionality (e.g. if slot time were changed at Phase 1, `PHASE_1_SLOTS_PER_EPOCH` would be introduced rather than altering `SLOTS_PER_EPOCH`). Transitioning from one phase to another is not a hard reset, but a live system. Additionally, security analysis and optimizations greatly benefit from compile-time garantuees.
+The philosophy behind configuration is that changes to values should only happen between chains, not over time.
 
-Generally [two configurations](https://github.com/ethereum/eth2.0-specs/tree/v0.10.0/configs) are actively maintained to provide client implementers with targets to maintain a shared testing and production focus.
+This means that in order to change functionality, additional constants must be introduced. For example, if there is a decision to change the slot time in Phase 1, rather than altering `SLOTS_PER_EPOCH`, we'd have to introduce a new constant -- `PHASE_1_SLOTS_PER_EPOCH`, say, 
 
-1) `minimal`: A reduced version of Eth2, to speed up the dev iteration cycle, as mainnet can be resource intensive and slower paced.
-2) `mainnet`: The intended mainnet parameters, although not definitive until audits results, testnet analysis and more community feedback are collected.
+Note that transitioning from one phase to another is not a hard reset -- the system is still live. Additionally, security analysis and optimizations greatly benefit from compile-time guarantees.
+
+[Two configurations](https://github.com/ethereum/eth2.0-specs/tree/v0.10.0/configs) are actively maintained. They provide client implementers with targets to maintain a shared testing and production focus.
+
+1. `minimal`: A reduced version of Eth2. Used to speed up the dev iteration cycle, as mainnet can be resource intensive and slower paced.
+
+2. `mainnet`: Has the intended mainnet parameters. Note however that these paramenters are not definitive until audit results, testnet analysis and community feedback are collected.
 
 ## Data structures
 
