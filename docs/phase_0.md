@@ -16,7 +16,7 @@ The [primary Phase 0 specification](https://github.com/ethereum/eth2.0-specs/blo
 
 The beacon chain is the core system-level blockchain for Ethereum 2.0. The name has its origins in the idea of a [random beacon](https://csrc.nist.gov/projects/interoperable-randomness-beacons)-- a beacon that provides a source of randomness to the rest of the system -- but it could just as easily have been called the "system chain", "spine chain", or something similar.
 
-A major part of the work of the beacon chain is storing and managing the registry of validators -- the set of nodes that have placed the required stake of 32 Ether, and who are responsible for running the Ethereum 2.0 system.
+A major part of the work of the beacon chain is storing and managing the registry of validators -- the set of participants who have placed the required stake of 32 Ether, and who are responsible for running the Ethereum 2.0 system.
 
 This registry is used to:
 
@@ -138,7 +138,7 @@ More details on slashing from a validator perspective can be found [here](https:
 
 The philosophy behind configuration is that changes to values should only happen between chains, not over time.
 
-This means that in order to change functionality, additional constants must be introduced. For example, if there is a decision to change the slot time in Phase 1, rather than altering `SLOTS_PER_EPOCH`, we'd have to introduce a new constant -- `PHASE_1_SLOTS_PER_EPOCH`, say, 
+This means that in order to change functionality, additional constants must be introduced. For example, if there is a decision to change the slot time in Phase 1, rather than altering `SLOTS_PER_EPOCH`, we'd have to introduce a new constant -- `PHASE_1_SLOTS_PER_EPOCH`.
 
 Note that transitioning from one phase to another is not a hard reset -- the system is still live. Additionally, security analysis and optimizations greatly benefit from compile-time guarantees.
 
