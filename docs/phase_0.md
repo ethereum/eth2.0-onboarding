@@ -23,7 +23,7 @@ This registry is used to:
 - Assign validators their duties
 - Finalize checkpoints
 - Perform a protocol level random number generation (RNG)
-- Progress the  beacon chain
+- Progress the beacon chain
 - Vote on the head of the chain for the fork choice
 - Finalize checkpoints
 - Link and vote in transitions/data of shard chains_
