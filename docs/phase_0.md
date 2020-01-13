@@ -26,7 +26,7 @@ This registry is used to:
 - Progress the beacon chain
 - Vote on the head of the chain for the fork choice
 - Finalize checkpoints
-- Link and vote in transitions/data of shard chains_
+- Link and vote in transitions/data of shard chains
 
 The beacon chain is both the brains behind the operation and the scaffolding upon which the rest of the sharded system is built.
 
