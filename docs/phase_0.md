@@ -150,25 +150,47 @@ Note that transitioning from one phase to another is not a hard reset -- the sys
 
 ## Data structures
 
-Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types. A type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
+Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types: a type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
 
-The main benefit of SSZ-tree-hashing is its support for non-homogeneous tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root. And the full expansion can be proven for this root. Compose this, and partial datastructures can be proven as well. The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). Techniques like these greatly reduce the amount of hashing work that must be done at each slot, without compromising the data-type expressiveness of the consensus types.
+The main benefit of SSZ-tree-hashing is its support for different tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root.
+
+The full expansion can be proven for this root. Compose this, and partial datastructures can be proven as well.
+
+The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). **Techniques like these greatly reduce the amount of hashing work that needs to be done at each slot, without compromising the data-type expressiveness of the consensus types.**
 
 The serialization of SSZ is focused on determinism and efficient lookups. It is not a streaming encoding, but generally very efficient. And more standard than previous approaches such as RLP. Additionaly the complete coverage of serialization and hash-tree-root on the same type system avoids gaps in functionality and ambiguity.
 
 
 ### Beacon operations
 
-[Beacon operations](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-operations) are datastructures that can be added to a `BeaconBlock` by a block proposer. This is how various messages related to system level validation/construction of the chain are incorporated. They are essentially validator-level transactions to the beacon chain state machine. Each operation has a maximum allowed per block defined in the constants in [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block).
+[Beacon operations](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-operations) are datastructures that can be added to a `BeaconBlock` by a block proposer.
+
+They are used to transmit messages concerning:
+
+- Proposer slashings
+- Attester slashings
+- Attestations
+- Deposits
+- Voluntary exits
+
+They are the primary vehicle through which messages related to the validation/construction of the chain are communicated. You can think of them as validator-level transactions to the beacon chain state machine.
+
+There is a maximum number of beacon operations allowed per block. And different operations may have different maximum values associated with them. These numbers are defined in the constants in the [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block) subsection of the Beacon chain specification.
 
 #### `ProposerSlashing`
 
-A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) is used to police potentially nefarious validator block proposal activity. This makes duplicate block proposals "expensive" to disincentivize activity that might lead to forking and conflicting views of the canonical chain. Validators can be slashed if they sign two different beacon blocks for the same slot.
+A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
 
-* This data structure contains proof that such a slashable offense has occurred.
-* `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)` and thus a single signature is valid for both data structures. `SignedBeaconBlockHeader` is used as proof to reduce data size.
-* Fields
-    * `proposer_index` - `ValidatorIndex` of the validator to be slashed for double proposing
+>Note: slashings are major penalties given for malicious operations.
+
+ Validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive. The idea is to disincentivize activity that might lead to forking and conflicting views of the canonical chain.
+ 
+ Some important points:
+ 
+* `ProposerSlashing` contains proof that the slashable offense has occurred.
+* Since `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)`, a single signature is valid for both data structures. This means `SignedBeaconBlockHeader` can be used as a proof to reduce data size.
+* The data structure contains three fields:
+    * `proposer_index` - The validator index of the validator to be slashed for double proposing
     * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
     * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
 
