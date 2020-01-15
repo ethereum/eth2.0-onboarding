@@ -193,9 +193,10 @@ class ProposerSlashing(Container):
 ```
 
 It has three fields:
-    * `proposer_index` - The validator index of the validator to be slashed for double proposing
-    * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
-    * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
+
+  * `proposer_index` - The validator index of the validator to be slashed for double proposing
+  * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
+  * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
 
 These fields are all that's needed to prove that a slashable offense has occurred.
 
@@ -264,7 +265,7 @@ It has three fields:
  
 As you can see, it contains the aggregate signature (`BLSSignature`) and the participation bitfield required for verification of the signature. 
 
-However, the core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata) which contains fields signalling support for the head of the chain and the FFG vote.
+However, the core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata).
 
 ```python
 class AttestationData(Container):
@@ -277,7 +278,7 @@ class AttestationData(Container):
     target: Checkpoint
 ```
 
-`AttestationData` is the primary component committed to by each validator. It has five fields:
+`AttestationData` is the primary component committed to by each validator. It contains signalling support for the head of the chain and the FFG vote. And has five fields:
 
    * `slot` - the slot that the validator/committee is assigned to attest to
    * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
@@ -307,8 +308,6 @@ It has two fields:
 
    * `proof` - the merkle path to the deposit root. In other words, the merkle proof against the current `state.eth1_data.root` in the `BeaconState`. Note that the `+ 1` in the vector length is due to the SSZ length mixed into the root.
    * `data` - the submitted [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#depositdata) to the deposit contract. This is verified using the `proof` against the `state.eth1_data.root`.
-   
-`DepositData`'s signature looks like this:
 
 ```python
 class DepositData(Container):
@@ -318,9 +317,9 @@ class DepositData(Container):
     signature: BLSSignature  # Signing over DepositMessage
 ```
 
-It has four fields:
+`DepositData` has four fields:
 
-   * `pubkey` - the BLS12-381 pubkey to be used by the validator to sign messages
+   * `pubkey` - the BLS12-381 public key to be used by the validator to sign messages
    * `withdrawal_credentials` - a `BLS_WITHDRAWAL_PREFIX` -- concatenated with the last 31 bytes of the hash of an offline pubkey -- to be used to withdraw staked funds after exiting. This key is not used actively in validation and can be kept in cold storage.
    * `amount` - the amount in Gwei that was deposited
    * `signature` - the signature of the `DepositMessage(pubkey, amount, withdrawal_credentials)` using the `privkey` pair of the `pubkey`. This is used as a one-time proof of possession: a requirement for securely using BLS keys. It also signs over the `withdrawal_credentials` -- this is essential to avoid injection of other withdrawal credentials.
