@@ -333,7 +333,7 @@ class DepositMessage(Container):
     amount: Gwei
 ```
 
-> Note that deposit index is explicitly defined, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+> Note that we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
 
 
 #### `VoluntaryExit`
