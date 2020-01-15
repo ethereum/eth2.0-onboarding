@@ -188,11 +188,11 @@ A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/spe
  Some important points:
  
 * `ProposerSlashing` contains proof that the slashable offense has occurred.
-* Since `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)`, a single signature is valid for both data structures. This means `SignedBeaconBlockHeader` can be used as a proof to reduce data size.
-* The data structure contains three fields:
+* It contains three fields:
     * `proposer_index` - The validator index of the validator to be slashed for double proposing
     * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
     * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
+* Since `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)`, a single signature is valid for both data structures. This means `SignedBeaconBlockHeader` can be used as a proof to reduce data size.
 
 <!insert_class `ProposerSlashing`>
 
@@ -202,13 +202,16 @@ A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/spe
 
 #### `AttesterSlashing`
 
-An [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) is used to police potentially nefarious validator attestation activity that might lead to finalizing two conflicting chains. Validators can be slashed if they sign two conflicting attestations where conflicting is defined by [`is_slashable_attestation_data`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#is_slashable_attestation_data) which checks for the Casper FFG "double" and "surround" vote conditions.
+An [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) operation is used to police potentially malicious validator attestation activity that might lead to finalizing two conflicting chains.
 
-* Fields
-    * `attestation_1` - The first of the two slashable attestations in `IndexedAttestation` form.
-    * `attestation_2` - The second of the two slashable attestations in `IndexedAttestation` form.
+Validators can be slashed if they sign two conflicting attestations -- where conflicting is defined by [`is_slashable_attestation_data`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#is_slashable_attestation_data) which checks if the attestations are slashable according to Casper FFG rules (in particular the "double" and "surround" vote conditions).
 
-Note that an `IndexedAttestation` is included, as opposed to a bitfield based `Attestation`, to verify the slashing without recomputing (historical) committee indices.
+It contains two fields:
+
+* `attestation_1` - The first of the two slashable attestations (in [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#indexedattestation) form).
+* `attestation_2` - The second of the two slashable attestations (in `IndexedAttestation` form).
+
+>Note that we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation`. This allows us to check if the attestations are slashable without recomputing (historical) committee indices.
 
 <!insert_class `AttesterSlashing`>
 
@@ -216,25 +219,34 @@ Note that an `IndexedAttestation` is included, as opposed to a bitfield based `A
 
 #### `Attestation`
 
-An [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) is the primary message type that validators create for consensus. The core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata) which contains fields signalling support for the head of the chain, the FFG vote, and the shard data (in Phase 1). Although beacon blocks are only created by one validator per slot, _all_ validators have a chance to create one attestation each epoch through their assignment to a Beacon Committee. In the optimal case, all active validators create and have an attestation included into a block during each epoch.
+An [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) is the primary message type that validators create for consensus.
 
-* `AttestationData` is the primary component that is committed to by each validator.
-* The outer datastructure contains the aggregate signature and the participation bitfield requisite for verification of the signature.
-* Fields
-    * `aggregation_bits` stores a single bit for each member of the committee assigning a value of `1` to each validator that participated in this aggregate signature. These bits are ordered by the sort of the associated crosslink committee.
-    * `data` is the `AttestationData` that was signed by the validator or collection of validators.
-        * `slot` - slot that the validator/committee is assigned to attest to
-        * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
-        * `beacon_block_root` - block root of the beacon block seen as the head of the chain during the assigned slot
-        * `source` - the most recent justified `Checkpoint` in the `BeaconState` during the assigned slot
-        * `target` - the `Checkpoint` the attesters are attempting to justify (the current epoch and epoch boundary block)
-    * `signature` is the aggregate BLS signature of the attestation.
+The core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata) which contains fields signalling support for the head of the chain and the FFG vote.
 
-<!insert_class `Attestation`>
+> Note that in phase 1, `AttestationData` will have an additional shard data field.
+
+Although beacon blocks are only created by one validator per slot, _all_ validators have a chance to create one attestation per epoch (through their assignment to a Beacon Committee). In the optimal case, all active validators create and have an attestation included into a block during each epoch.
+
+`AttestationData` is the primary component committed to by each validator. It has five fields:
+
+   * `slot` - the slot that the validator/committee is assigned to attest to
+   * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
+   * `beacon_block_root` - block root of the beacon block seen as the head of the chain during the assigned slot
+   * `source` - the most recent justified `Checkpoint` in the `BeaconState` during the assigned slot
+   * `target` - the `Checkpoint` the attesters are attempting to justify (the current epoch and epoch boundary block)
 
 <!insert_class `AttestationData`>
 
 <!insert_class `Checkpoint`>
+    
+
+The outer datastructure -- `Attestation` -- contains the aggregate signature and the participation bitfield required for verification of the signature. It has three fields:
+
+   * `aggregation_bits` - a list of bits containing a single bit for each member of the committee. Each validator that participated in this aggregate signature is assigned a value of `1`. These bits are ordered by the sort of the associated crosslink committee.
+   * `data` - the `AttestationData` that was signed by the validator or collection of validators.
+   * `signature` - the aggregate BLS signature of the attestation.
+   
+   <!insert_class `Attestation`>
 
 #### `Deposit`
 
