@@ -126,7 +126,7 @@ Slashings are like normal voluntary exits, except that their withdrawal is delay
 
 More details on slashing from a validator perspective can be found [here](https://github.com/ethereum/eth2.0-specs/blob/master/specs/validator/0_beacon-chain-validator.md#how-to-avoid-slashing).
 
-## Eth2 parameters
+## Parameters
 
 ### Constants
 
@@ -257,7 +257,7 @@ class Attestation(Container):
     signature: BLSSignature
 ```
 
-It has three fields:
+ It has three fields:
 
  * `aggregation_bits` - a list of bits containing a single bit for each member of the committee. Each validator that participated in this aggregate signature is assigned a value of `1`. These bits are ordered by the sort of the associated crosslink committee.
  * `data` - the `AttestationData` that was signed by the validator or collection of validators.
@@ -278,7 +278,9 @@ class AttestationData(Container):
     target: Checkpoint
 ```
 
-`AttestationData` is the primary component committed to by each validator. It contains signalling support for the head of the chain and the FFG vote. And has five fields:
+`AttestationData` is the primary component committed to by each validator. It contains signalling support for the head of the chain and the FFG vote.
+
+`AttestationData` has five fields:
 
    * `slot` - the slot that the validator/committee is assigned to attest to
    * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
