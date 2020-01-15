@@ -181,7 +181,7 @@ There is a maximum number of beacon operations allowed per block. And different 
 
 A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
 
->Note: slashings are major penalties given for malicious operations.
+>Slashings are major penalties given for malicious operations.
 
  Validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive. The idea is to disincentivize activity that might lead to forking and conflicting views of the canonical chain.
  
@@ -250,40 +250,47 @@ The outer datastructure -- `Attestation` -- contains the aggregate signature and
 
 #### `Deposit`
 
-A [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#deposit) represents incoming validator deposits from the eth1 [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/deposit-contract.md).
-
-* Fields
-    * `proof` - the merkle proof against the current `state.eth1_data.root` in the `BeaconState`. Note that the `+ 1` in the vector length is due to the SSZ length mixed into the root.
-    * `data` - the [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#depositdata) submit to the deposit contract to be verified using the `proof` against the `state.eth1_data.root`.
-        * `pubkey` - BLS12-381 pubkey to be used by the validator to sign messages
-        * `withdrawal_credentials` - `BLS_WITHDRAWAL_PREFIX` concatenated with the last 31 bytes of the hash of an offline pubkey to be used to withdraw staked funds after exiting. This key is not used actively in validation and can be kept in cold storage.
-        * `amount` - amount in Gwei that was deposited
-        * `signature` - signature of the `DepositMessage(pubkey, amount, withdrawal_credentials)` using the `privkey` pair of the `pubkey`. This is used as a one-time "proof of possession" required for securely using BLS keys. But also signs over the withdrawal_credentials, essential to avoid injection of other withdrawal credentials.
-
-No deposit index is explicitly defined, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+A [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#deposit) represents an incoming validator deposit from the eth1 [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/deposit-contract.md).
 
 <!insert_class `Deposit`>
 
+It has two fields:
+
+   * `proof` - the merkle path to the deposit root. In other words, the merkle proof against the current `state.eth1_data.root` in the `BeaconState`. Note that the `+ 1` in the vector length is due to the SSZ length mixed into the root.
+   * `data` - the submitted [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#depositdata) to the deposit contract. This is verified using the `proof` against the `state.eth1_data.root`.
+
 <!insert_class `DepositData`>
 
+`DepositData` has four fields:
+
+   * `pubkey` - the BLS12-381 pubkey to be used by the validator to sign messages
+   * `withdrawal_credentials` - a `BLS_WITHDRAWAL_PREFIX` -- concatenated with the last 31 bytes of the hash of an offline pubkey -- to be used to withdraw staked funds after exiting. This key is not used actively in validation and can be kept in cold storage.
+   * `amount` - the amount in Gwei that was deposited
+   * `signature` - the signature of the `DepositMessage(pubkey, amount, withdrawal_credentials)` using the `privkey` pair of the `pubkey`. This is used as a one-time proof of possession: a requirement for securely using BLS keys. It also signs over the `withdrawal_credentials` -- this is essential to avoid injection of other withdrawal credentials.
+   
 <!insert_class `DepositMessage`>
+
+> Note that deposit index is explicitly defined, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+
 
 #### `VoluntaryExit`
 
-A [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#voluntaryexit) allows a validator to voluntarily exit validation duties. This object is wrapped into a [`SignedVoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#signedvoluntaryexit) which is included on chain.
-
-* `VoluntaryExit`
-    * Fields
-        * `epoch` - minimum epoch at which this exit can be included on chain. Helps prevent accidental/nefarious use in chain reorgs/forks.
-        * `validator_index` - the exiting validator's index within the `BeaconState` validator registry.
-* `SignedVoluntaryExit`
-    * Fields
-        * `message` - The `VoluntaryExit` signed over in this object.
-        * `signature` - signature of the `VoluntaryExit.message` included in this object. Signed by the pubkey associated with the `Validator` defined by `validator_index`.
+A [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#voluntaryexit) allows a validator to voluntarily exit validation duties. This object is wrapped into a [`SignedVoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#signedvoluntaryexit) which is included on-chain.
 
 <!insert_class `VoluntaryExit`>
 
+`VolunaryExit` has two fields:
+     
+   * `epoch` - the minimum epoch at which this exit can be included on chain. This helps prevent accidental/malicious use in chain forks or reorganisations.
+   * `validator_index` - the exiting validator's index within the `BeaconState` validator registry.
+
 <!insert_class `SignedVoluntaryExit`>
+   
+`SignedVoluntaryExit` has two fields:
+   
+   * `message` - the `VoluntaryExit` signed over in this object.
+   * `signature` - the signature of the `VoluntaryExit.message` included in this object -- signed by the pubkey associated with the `Validator` defined by `validator_index`.
+
 
 ### `BeaconBlock`
 
