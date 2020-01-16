@@ -38,7 +38,7 @@ The beacon chain's state ([`BeaconState`](https://github.com/ethereum/eth2.0-spe
 - Which state the validators are in
 - Which chain in the block tree this state belongs to
 
-> Note: while there are several possible states a validator can be in, only those marked as **active** can take part in the Ethereum 2.0 protocol. This is why it's important to keep track of which state validators are in.
+> **Note:** while there are several possible states a validator can be in, only those marked as **active** can take part in the Ethereum 2.0 protocol. This is why it's important to keep track of which state validators are in.
 
 The linking in of shard chains has evolved over time from including a data root, to linking in more elaborate transition data at a per-block pace for all shards.
 
@@ -46,13 +46,13 @@ Improving the UX of cross-shard communication, has required a reduction in the i
 
 You can find a discussion of the new shard chain/crosslink structure [here](https://notes.ethereum.org/@vbuterin/HkiULaluS).
 
-> Note: the attested inclusion of a shard transition is called a "crosslink".
+> **Note:** the attested inclusion of a shard transition is called a "crosslink".
 
 To enable state transitions, the beacon chain has a `state_transition` function which takes as input a `BeaconState` (pre state) and a `BeaconBlock` and returns a new beacon state (what we call a post state).
 
 Beginning with the genesis state, the post state of a block is considered valid if it passes all of the guards within the `state_transition` function.
 
-> Note: the pre-state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
+> **Note:** the pre-state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
 
 ### Fork Choice Rule
 
@@ -60,7 +60,7 @@ Given a block tree, the [fork choice rule](https://github.com/ethereum/eth2.0-sp
 
 The fork choice rule consumes the block-tree along with the set of most recent attestations from active validators, and identifies a block as the current head of the chain.
 
-> Definition: an attestation is a vote for a block proposal
+>**Definition:** an attestation is a vote for a block proposal
 
 LMD GHOST ("Latest Message Driven Greedy Heaviest-Observed Sub-Tree"), the fork choice rule of Eth2.0, considers which block the latest attestation from each validator points to and uses this to calculate the total balance that recursively attests to each block in the tree. 
 
@@ -82,7 +82,7 @@ Casper provides "accountable safety" that certain blocks will always remain in t
 
 Concretely, in order to help finalize blocks, validators are given the opportunity to produce a single [attestation](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) during an assigned slot at each epoch -- where an epoch is defined as the span of blocks between checkpoints.
 
-> Note: the committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
+>**Note:** the committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
 
 ### Shard transitions
 
@@ -152,17 +152,17 @@ Note that transitioning from one phase to another is not a hard reset -- the sys
 
 Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types: a type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
 
->Definition: determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (hash_tree_root) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
+>**Definition:** determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (hash_tree_root) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
 
 The main benefit of SSZ-tree-hashing is its support for different tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root.
 
 The full expansion can be proven for this root. Compositions, and partial datastructures can be proven as well.
 
->Note: when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting outer containers.
+>**Note:** when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting outer containers.
 
 The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). **Techniques like these greatly reduce the amount of hashing work that needs to be done at each slot, without compromising the data-type expressiveness of the consensus types.**
 
->Note: techniques like these allow us to do things like take a BlockHeader (with a body_root) or a full Block (with the entire body expressed) and get to the same Block root for each. This is really nice because we can choose to use either succinct versions, or full expansions, depending on the use case. And because of the merklization rules, we can make succinct proofs about the contents of what a full expansion might be. For example, say we have a block_header (with a body_root), we can prove that an attestation is contained within the block body, without needing to have the entire block body at hand.
+>**Note:** techniques like these allow us to do things like take a BlockHeader (with a body_root) or a full Block (with the entire body expressed) and get to the same Block root for each. This is really nice because we can choose to use either succinct versions, or full expansions, depending on the use case. And because of the merklization rules, we can make succinct proofs about the contents of what a full expansion might be. For example, say we have a block_header (with a body_root), we can prove that an attestation is contained within the block body, without needing to have the entire block body at hand.
 
 The serialization of SSZ is focused on determinism and efficient lookups. It is not a streaming encoding, but generally very efficient. And more standard than previous approaches such as RLP. Additionaly the complete coverage of serialization and hash-tree-root on the same type system avoids gaps in functionality and ambiguity.
 
@@ -179,11 +179,11 @@ They are used to transmit messages concerning:
 - Deposits
 - Voluntary exits
 
->Definition: slashings are major penalties given for malicious operations.
+>**Definition:** slashings are major penalties given for malicious operations.
 
 They are the primary vehicle through which messages related to the validation/construction of the chain are communicated. You can think of them as validator-level transactions to the beacon chain state machine.
 
->Note: there is a maximum number of beacon operations allowed per block. And different operations may have different maximum values associated with them. These numbers are defined in the constants in the [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block) subsection of the Beacon chain specification.
+>**Note:** there is a maximum number of beacon operations allowed per block. And different operations may have different maximum values associated with them. These numbers are defined in the constants in the [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block) subsection of the Beacon chain specification.
 
 #### `ProposerSlashing`
 
@@ -247,7 +247,7 @@ class IndexedAttestation(Container):
     signature: BLSSignature
 ```
 
->Note: we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation` since it allows us to check if the attestations are slashable without recomputing (historical) committee indices.
+>**Note:** we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation` since it allows us to check if the attestations are slashable without recomputing (historical) committee indices.
 
 
 #### `Attestation`
@@ -300,7 +300,7 @@ class Checkpoint(Container):
     root: Root
 ```
 
->Note: committee indices will be mapped to shards in Phase 1, which will allow `AttestationData` to signal support for shard data.
+>**Note:** committee indices will be mapped to shards in Phase 1, which will allow `AttestationData` to signal support for shard data.
 
 #### `Deposit`
 
@@ -339,7 +339,7 @@ class DepositMessage(Container):
     amount: Gwei
 ```
 
-> Note: we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+>**Note:** we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
 
 
 #### `VoluntaryExit`
