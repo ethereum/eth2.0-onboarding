@@ -52,7 +52,7 @@ To enable state transitions, the beacon chain has a `state_transition` function 
 
 Beginning with the genesis state, the post state of a block is considered valid if it passes all of the guards within the `state_transition` function.
 
-> Note: the pre state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
+> Note: the pre-state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
 
 ### Fork Choice Rule
 
@@ -152,11 +152,17 @@ Note that transitioning from one phase to another is not a hard reset -- the sys
 
 Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types: a type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
 
+>Definition: determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (hash_tree_root) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
+
 The main benefit of SSZ-tree-hashing is its support for different tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root.
 
-The full expansion can be proven for this root. Compose this, and partial datastructures can be proven as well.
+The full expansion can be proven for this root. Compositions, and partial datastructures can be proven as well.
+
+>Note: when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting outer containers.
 
 The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). **Techniques like these greatly reduce the amount of hashing work that needs to be done at each slot, without compromising the data-type expressiveness of the consensus types.**
+
+>Note: techniques like these allow us to do things like take a BlockHeader (with a body_root) or a full Block (with the entire body expressed) and get to the same Block root for each. This is really nice because we can choose to use either succinct versions, or full expansions, depending on the use case. And because of the merklization rules, we can make succinct proofs about the contents of what a full expansion might be. For example, say we have a block_header (with a body_root), we can prove that an attestation is contained within the block body, without needing to have the entire block body at hand.
 
 The serialization of SSZ is focused on determinism and efficient lookups. It is not a streaming encoding, but generally very efficient. And more standard than previous approaches such as RLP. Additionaly the complete coverage of serialization and hash-tree-root on the same type system avoids gaps in functionality and ambiguity.
 
@@ -173,7 +179,7 @@ They are used to transmit messages concerning:
 - Deposits
 - Voluntary exits
 
->Definition: Slashings are major penalties given for malicious operations.
+>Definition: slashings are major penalties given for malicious operations.
 
 They are the primary vehicle through which messages related to the validation/construction of the chain are communicated. You can think of them as validator-level transactions to the beacon chain state machine.
 
@@ -241,7 +247,7 @@ class IndexedAttestation(Container):
     signature: BLSSignature
 ```
 
->Note that we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation` since it allows us to check if the attestations are slashable without recomputing (historical) committee indices.
+>Note: we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation` since it allows us to check if the attestations are slashable without recomputing (historical) committee indices.
 
 
 #### `Attestation`
@@ -294,7 +300,7 @@ class Checkpoint(Container):
     root: Root
 ```
 
->Note: that committee indices will be mapped to shards in Phase 1, which will allow `AttestationData` to signal support for shard data.
+>Note: committee indices will be mapped to shards in Phase 1, which will allow `AttestationData` to signal support for shard data.
 
 #### `Deposit`
 
@@ -333,7 +339,7 @@ class DepositMessage(Container):
     amount: Gwei
 ```
 
-> Note that we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+> Note: we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
 
 
 #### `VoluntaryExit`
