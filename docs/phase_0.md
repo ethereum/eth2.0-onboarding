@@ -152,7 +152,7 @@ Note that transitioning from one phase to another is not a hard reset -- the sys
 
 Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types: a type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
 
->**Definition:** determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (hash_tree_root) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
+>**Definition:** determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (`hash_tree_root`) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
 
 The main benefit of SSZ-tree-hashing is its support for different tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root.
 
