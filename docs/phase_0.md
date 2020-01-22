@@ -189,7 +189,7 @@ They are the primary vehicle through which messages related to the validation/co
 
 A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
 
-For example, validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive, which disincentivizes activity that might lead to forking and conflicting views of the canonical chain.
+Specifically, validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive, which disincentivizes activity that might lead to forking and conflicting views of the canonical chain.
 
 ```python
 class ProposerSlashing(Container):
