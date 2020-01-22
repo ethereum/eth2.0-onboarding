@@ -38,7 +38,7 @@ The beacon chain's state ([`BeaconState`](https://github.com/ethereum/eth2.0-spe
 - Which state the validators are in
 - Which chain in the block tree this state belongs to
 
-> Note: while there are several possible states a validator can be in, only those marked as **active** can take part in the Ethereum 2.0 protocol. This is why it's important to keep track of which state validators are in.
+> **Note:** while there are several possible states a validator can be in, only those marked as **active** can take part in the Ethereum 2.0 protocol. This is why it's important to keep track of which state validators are in.
 
 The linking in of shard chains has evolved over time from including a data root, to linking in more elaborate transition data at a per-block pace for all shards.
 
@@ -46,13 +46,13 @@ Improving the UX of cross-shard communication, has required a reduction in the i
 
 You can find a discussion of the new shard chain/crosslink structure [here](https://notes.ethereum.org/@vbuterin/HkiULaluS).
 
-> Note: the attested inclusion of a shard transition is called a "crosslink".
+> **Note:** the attested inclusion of a shard transition is called a "crosslink".
 
 To enable state transitions, the beacon chain has a `state_transition` function which takes as input a `BeaconState` (pre state) and a `BeaconBlock` and returns a new beacon state (what we call a post state).
 
 Beginning with the genesis state, the post state of a block is considered valid if it passes all of the guards within the `state_transition` function.
 
-> Note: the pre state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
+> **Note:** the pre-state of a block is defined as being a valid post state of the previous block. This definition extends recursively all the way back to the genesis state. 
 
 ### Fork Choice Rule
 
@@ -60,7 +60,7 @@ Given a block tree, the [fork choice rule](https://github.com/ethereum/eth2.0-sp
 
 The fork choice rule consumes the block-tree along with the set of most recent attestations from active validators, and identifies a block as the current head of the chain.
 
-> Note: an attestation is a vote for a block proposal
+>**Definition:** an attestation is a vote for a block proposal
 
 LMD GHOST ("Latest Message Driven Greedy Heaviest-Observed Sub-Tree"), the fork choice rule of Eth2.0, considers which block the latest attestation from each validator points to and uses this to calculate the total balance that recursively attests to each block in the tree. 
 
@@ -82,7 +82,7 @@ Casper provides "accountable safety" that certain blocks will always remain in t
 
 Concretely, in order to help finalize blocks, validators are given the opportunity to produce a single [attestation](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) during an assigned slot at each epoch -- where an epoch is defined as the span of blocks between checkpoints.
 
-> Note: the committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
+>**Note:** the committed to `attestation.data.source` serves as the FFG source pair discussed in depth in ["Combining GHOST and Casper"](https://github.com/ethereum/research/blob/master/papers/ffg%2Bghost/paper.pdf), while the committed to `attestation.data.target` serves as the FFG target pair.
 
 ### Shard transitions
 
@@ -126,7 +126,7 @@ Slashings are like normal voluntary exits, except that their withdrawal is delay
 
 More details on slashing from a validator perspective can be found [here](https://github.com/ethereum/eth2.0-specs/blob/master/specs/validator/0_beacon-chain-validator.md#how-to-avoid-slashing).
 
-## Eth2 parameters
+## Parameters
 
 ### Constants
 
@@ -150,106 +150,218 @@ Note that transitioning from one phase to another is not a hard reset -- the sys
 
 ## Data structures
 
-Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types. A type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
+Data structures across the Eth2 specification are defined in terms of [Simple SerialiZe (SSZ)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md) types: a type system that defines serialization and [merkleization (hash-tree-root)](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/ssz/simple-serialize.md#merkleization), focused on determinism and minimalism.
 
-The main benefit of SSZ-tree-hashing is its support for non-homogeneous tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root. And the full expansion can be proven for this root. Compose this, and partial datastructures can be proven as well. The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). Techniques like these greatly reduce the amount of hashing work that must be done at each slot, without compromising the data-type expressiveness of the consensus types.
+>**Definition:** determinism in this context means well definedness. Determinism matters because we use the SSZ type and hashing scheme (`hash_tree_root`) for consensus objects and hash chains. Since we're using it in consensus, there cannot be any ambiguity in the serialization spec. Some other (more common) serialization formats/types sometimes have corner cases that aren't fully spec'd and can end up with slightly different results depending on the implementation/machine.
+
+The main benefit of SSZ-tree-hashing is its support for different tree depths when merkleizing the underlying data. This allows for any of the contents of complex data structures to be summarized in-place as a merkle root.
+
+The full expansion can be proven for this root. Compositions, and partial datastructures can be proven as well.
+
+>**Note:** when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting the merklization of outer containers.
+
+The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). **Techniques like these greatly reduce the amount of hashing work that needs to be done at each slot, without compromising the data-type expressiveness of the consensus types.**
+
+>**Note:** techniques like these allow us to do things like take a `BlockHeader` (with a `body_root`) or a full `Block` (with the entire `body` expressed) and get to the same block root for each. This is really nice because we can choose to use either succinct versions, or full expansions, depending on the use case. And because of the merklization rules, we can make succinct proofs about the contents of what a full expansion might be. For example, say we have a `block_header` (with a `body_root`), we can prove that an attestation is contained within the block body, without needing to have the entire block body at hand.
 
 The serialization of SSZ is focused on determinism and efficient lookups. It is not a streaming encoding, but generally very efficient. And more standard than previous approaches such as RLP. Additionaly the complete coverage of serialization and hash-tree-root on the same type system avoids gaps in functionality and ambiguity.
 
 
 ### Beacon operations
 
-[Beacon operations](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-operations) are datastructures that can be added to a `BeaconBlock` by a block proposer. This is how various messages related to system level validation/construction of the chain are incorporated. They are essentially validator-level transactions to the beacon chain state machine. Each operation has a maximum allowed per block defined in the constants in [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block).
+[Beacon operations](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-operations) are datastructures that can be added to a `BeaconBlock` by a block proposer.
+
+They are the means by which new information is introduced into the beacon chain allowing it to update its internal state.
+
+>**Note:** there is a maximum number of beacon operations allowed per block. And different operations may have different maximum values associated with them. These numbers are defined in the constants in the [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block) subsection of the Beacon chain specification.
 
 #### `ProposerSlashing`
 
-A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) is used to police potentially nefarious validator block proposal activity. This makes duplicate block proposals "expensive" to disincentivize activity that might lead to forking and conflicting views of the canonical chain. Validators can be slashed if they sign two different beacon blocks for the same slot.
+The [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
 
-* This data structure contains proof that such a slashable offense has occurred.
-* `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)` and thus a single signature is valid for both data structures. `SignedBeaconBlockHeader` is used as proof to reduce data size.
-* Fields
-    * `proposer_index` - `ValidatorIndex` of the validator to be slashed for double proposing
-    * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
-    * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
+>**Definition:** slashings are major penalties given for malicious operations.
 
-<!insert_class `ProposerSlashing`>
+Specifically, validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive, which disincentivizes activity that might lead to forking and conflicting views of the canonical chain.
 
-<!insert_class `SignedBeaconBlockHeader`>
+```python
+class ProposerSlashing(Container):
+    proposer_index: ValidatorIndex
+    signed_header_1: SignedBeaconBlockHeader
+    signed_header_2: SignedBeaconBlockHeader
+```
 
-<!insert_class `BeaconBlockHeader`>
+It has three fields:
+
+  * `proposer_index` - The validator index of the validator to be slashed for double proposing
+  * `signed_header_1` - The signed header of the first of the two slashable beacon blocks
+  * `signed_header_2` - The signed header of the second of the two slashable beacon blocks
+
+These fields are all that's needed to prove that a slashable offense has occurred.
+
+```python
+class SignedBeaconBlock(Container):
+    message: BeaconBlock
+    signature: BLSSignature
+```
+
+```python
+class BeaconBlockHeader(Container):
+    slot: Slot
+    parent_root: Root
+    state_root: Root
+    body_root: Root
+```
+
+Importantly, since `hash_tree_root(signed_block.message) == hash_tree_root(signed_block_header.message)`, a single signature is valid for both data structures. This means `SignedBeaconBlockHeader` can be used as a proof, which reduces data size. For more on `hash_tree_root` see [here](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#hash_tree_root).
+
 
 #### `AttesterSlashing`
 
-An [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) is used to police potentially nefarious validator attestation activity that might lead to finalizing two conflicting chains. Validators can be slashed if they sign two conflicting attestations where conflicting is defined by [`is_slashable_attestation_data`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#is_slashable_attestation_data) which checks for the Casper FFG "double" and "surround" vote conditions.
+The [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) operation is used to police potentially malicious validator attestation activity that might lead to finalizing two conflicting chains.
 
-* Fields
-    * `attestation_1` - The first of the two slashable attestations in `IndexedAttestation` form.
-    * `attestation_2` - The second of the two slashable attestations in `IndexedAttestation` form.
+Specifically, validators can be slashed if they sign two conflicting attestations -- where conflicting is defined by [`is_slashable_attestation_data`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#is_slashable_attestation_data) which checks if the attestations are slashable according to Casper FFG rules (in particular the "double" and "surround" vote conditions).
 
-Note that an `IndexedAttestation` is included, as opposed to a bitfield based `Attestation`, to verify the slashing without recomputing (historical) committee indices.
+```python
+class AttesterSlashing(Container):
+    attestation_1: IndexedAttestation
+    attestation_2: IndexedAttestation
+```
 
-<!insert_class `AttesterSlashing`>
+It has two fields:
 
-<!insert_class `IndexedAttestation`>
+* `attestation_1` - The first of the two slashable attestations (in [`IndexedAttestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#indexedattestation) form).
+* `attestation_2` - The second of the two slashable attestations (in `IndexedAttestation` form).
+
+```python
+class IndexedAttestation(Container):
+    attesting_indices: List[ValidatorIndex, MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    signature: BLSSignature
+```
+
+>**Note:** we use an `IndexedAttestation`, as opposed to a bitfield based `Attestation` since it allows us to check if the attestations are slashable without recomputing (historical) committee indices.
+
 
 #### `Attestation`
 
-An [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) is the primary message type that validators create for consensus. The core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata) which contains fields signalling support for the head of the chain, the FFG vote, and the shard data (in Phase 1). Although beacon blocks are only created by one validator per slot, _all_ validators have a chance to create one attestation each epoch through their assignment to a Beacon Committee. In the optimal case, all active validators create and have an attestation included into a block during each epoch.
+An [`Attestation`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestation) is the primary message type that validators create for consensus.
 
-* `AttestationData` is the primary component that is committed to by each validator.
-* The outer datastructure contains the aggregate signature and the participation bitfield requisite for verification of the signature.
-* Fields
-    * `aggregation_bits` stores a single bit for each member of the committee assigning a value of `1` to each validator that participated in this aggregate signature. These bits are ordered by the sort of the associated crosslink committee.
-    * `data` is the `AttestationData` that was signed by the validator or collection of validators.
-        * `slot` - slot that the validator/committee is assigned to attest to
-        * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
-        * `beacon_block_root` - block root of the beacon block seen as the head of the chain during the assigned slot
-        * `source` - the most recent justified `Checkpoint` in the `BeaconState` during the assigned slot
-        * `target` - the `Checkpoint` the attesters are attempting to justify (the current epoch and epoch boundary block)
-    * `signature` is the aggregate BLS signature of the attestation.
+Although beacon blocks are only created by one validator per slot, _all_ validators have a chance to create one attestation per epoch (through their assignment to a Beacon Committee). In the optimal case, all active validators create and have an attestation included into a block during each epoch.
 
-<!insert_class `Attestation`>
+```python
+class Attestation(Container):
+    aggregation_bits: Bitlist[MAX_VALIDATORS_PER_COMMITTEE]
+    data: AttestationData
+    signature: BLSSignature
+```
 
-<!insert_class `AttestationData`>
+ It has three fields:
 
-<!insert_class `Checkpoint`>
+ * `aggregation_bits` - a list of bits containing a single bit for each member of the committee. Each validator that participated in this aggregate signature is assigned a value of `1`. These bits are ordered by the sort of the associated crosslink committee.
+ * `data` - the `AttestationData` that was signed by the validator or collection of validators.
+ * `signature` - the aggregate BLS signature of the attestation.
+ 
+As you can see, it contains the aggregate signature (`BLSSignature`) and the participation bitfield required for verification of the signature. 
+
+However, the core of the message is the [`AttestationData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attestationdata).
+
+```python
+class AttestationData(Container):
+    slot: Slot
+    index: CommitteeIndex
+    # LMD GHOST vote
+    beacon_block_root: Root
+    # FFG vote
+    source: Checkpoint
+    target: Checkpoint
+```
+
+`AttestationData` is the primary component committed to by each validator. It contains signalling support for the head of the chain and the FFG vote.
+
+`AttestationData` has five fields:
+
+   * `slot` - the slot that the validator/committee is assigned to attest to
+   * `index` - the index of the committee making the attestation (committee indices are mapped to shards in Phase 1)
+   * `beacon_block_root` - block root of the beacon block seen as the head of the chain during the assigned slot
+   * `source` - the most recent justified `Checkpoint` in the `BeaconState` during the assigned slot
+   * `target` - the `Checkpoint` the attesters are attempting to justify (the current epoch and epoch boundary block)
+
+```python
+class Checkpoint(Container):
+    epoch: Epoch
+    root: Root
+```
+
+>**Note:** committee indices will be mapped to shards in Phase 1, which will allow `AttestationData` to signal support for shard data.
 
 #### `Deposit`
 
-A [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#deposit) represents incoming validator deposits from the eth1 [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/deposit-contract.md).
+A [`Deposit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#deposit) represents an incoming validator deposit from the eth1 [deposit contract](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/deposit-contract.md).
 
-* Fields
-    * `proof` - the merkle proof against the current `state.eth1_data.root` in the `BeaconState`. Note that the `+ 1` in the vector length is due to the SSZ length mixed into the root.
-    * `data` - the [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#depositdata) submit to the deposit contract to be verified using the `proof` against the `state.eth1_data.root`.
-        * `pubkey` - BLS12-381 pubkey to be used by the validator to sign messages
-        * `withdrawal_credentials` - `BLS_WITHDRAWAL_PREFIX` concatenated with the last 31 bytes of the hash of an offline pubkey to be used to withdraw staked funds after exiting. This key is not used actively in validation and can be kept in cold storage.
-        * `amount` - amount in Gwei that was deposited
-        * `signature` - signature of the `DepositMessage(pubkey, amount, withdrawal_credentials)` using the `privkey` pair of the `pubkey`. This is used as a one-time "proof of possession" required for securely using BLS keys. But also signs over the withdrawal_credentials, essential to avoid injection of other withdrawal credentials.
+```python
+class Deposit(Container):
+    proof: Vector[Bytes32, DEPOSIT_CONTRACT_TREE_DEPTH + 1]  # Merkle path to deposit root
+    data: DepositData
+```
 
-No deposit index is explicitly defined, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+It has two fields:
 
-<!insert_class `Deposit`>
+   * `proof` - the merkle path to the deposit root. In other words, the merkle proof against the current `state.eth1_data.root` in the `BeaconState`. Note that the `+ 1` in the vector length is due to the SSZ length mixed into the root.
+   * `data` - the submitted [`DepositData`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#depositdata) to the deposit contract. This is verified using the `proof` against the `state.eth1_data.root`.
 
-<!insert_class `DepositData`>
+```python
+class DepositData(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+    signature: BLSSignature  # Signing over DepositMessage
+```
 
-<!insert_class `DepositMessage`>
+`DepositData` has four fields:
+
+   * `pubkey` - the BLS12-381 public key to be used by the validator to sign messages
+   * `withdrawal_credentials` - a `BLS_WITHDRAWAL_PREFIX` -- concatenated with the last 31 bytes of the hash of an offline pubkey -- to be used to withdraw staked funds after exiting. This key is not used actively in validation and can be kept in cold storage.
+   * `amount` - the amount in Gwei that was deposited
+   * `signature` - the signature of the `DepositMessage(pubkey, amount, withdrawal_credentials)` using the `privkey` pair of the `pubkey`. This is used as a one-time proof of possession: a requirement for securely using BLS keys. It also signs over the `withdrawal_credentials` -- this is essential to avoid injection of other withdrawal credentials.
+   
+```python
+class DepositMessage(Container):
+    pubkey: BLSPubkey
+    withdrawal_credentials: Bytes32
+    amount: Gwei
+```
+
+>**Note:** we don't need to explicitly define a deposit index, as it is already verified through the merkle inclusion proof. (And can easily be derived from the mix-in node in the proof).
+
 
 #### `VoluntaryExit`
 
-A [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#voluntaryexit) allows a validator to voluntarily exit validation duties. This object is wrapped into a [`SignedVoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#signedvoluntaryexit) which is included on chain.
+A [`VoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#voluntaryexit) allows a validator to voluntarily exit validation duties. 
 
-* `VoluntaryExit`
-    * Fields
-        * `epoch` - minimum epoch at which this exit can be included on chain. Helps prevent accidental/nefarious use in chain reorgs/forks.
-        * `validator_index` - the exiting validator's index within the `BeaconState` validator registry.
-* `SignedVoluntaryExit`
-    * Fields
-        * `message` - The `VoluntaryExit` signed over in this object.
-        * `signature` - signature of the `VoluntaryExit.message` included in this object. Signed by the pubkey associated with the `Validator` defined by `validator_index`.
+```python
+class VoluntaryExit(Container):
+    epoch: Epoch  # Earliest epoch when voluntary exit can be processed
+    validator_index: ValidatorIndex
+```
 
-<!insert_class `VoluntaryExit`>
+It has two fields:
+     
+   * `epoch` - the minimum epoch at which this exit can be included on chain. This helps prevent accidental/malicious use in chain forks or reorganisations.
+   * `validator_index` - the exiting validator's index within the `BeaconState` validator registry.
+   
+Importantly, `VoluntaryExit` is wrapped into [`SignedVoluntaryExit`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#signedvoluntaryexit) which is included on-chain.
 
-<!insert_class `SignedVoluntaryExit`>
+```python
+class SignedVoluntaryExit(Container):
+    message: VoluntaryExit
+    signature: BLSSignature
+```
+   
+`SignedVoluntaryExit` has two fields:
+   
+   * `message` - the `VoluntaryExit` signed over in this object.
+   * `signature` - the signature of the `VoluntaryExit.message` included in this object -- signed by the pubkey associated with the `Validator` defined by `validator_index`.
+
 
 ### `BeaconBlock`
 
