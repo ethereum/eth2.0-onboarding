@@ -171,23 +171,15 @@ The serialization of SSZ is focused on determinism and efficient lookups. It is 
 
 [Beacon operations](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#beacon-operations) are datastructures that can be added to a `BeaconBlock` by a block proposer.
 
-They are used to transmit messages concerning:
-
-- Proposer slashings
-- Attester slashings
-- Attestations
-- Deposits
-- Voluntary exits
-
->**Definition:** slashings are major penalties given for malicious operations.
-
-They are the primary vehicle through which messages related to the validation/construction of the chain are communicated. You can think of them as validator-level transactions to the beacon chain state machine.
+They are the means by which new information is introduced into the beacon chain allowing it to update its internal state.
 
 >**Note:** there is a maximum number of beacon operations allowed per block. And different operations may have different maximum values associated with them. These numbers are defined in the constants in the [max operations per block](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#max-operations-per-block) subsection of the Beacon chain specification.
 
 #### `ProposerSlashing`
 
-A [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
+The [`ProposerSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#proposerslashing) operation is used to police potentially malicious validator block proposal activity.
+
+>**Definition:** slashings are major penalties given for malicious operations.
 
 Specifically, validators can be slashed if they sign two different beacon blocks for the same slot. This makes duplicate block proposals expensive, which disincentivizes activity that might lead to forking and conflicting views of the canonical chain.
 
@@ -225,7 +217,7 @@ Importantly, since `hash_tree_root(signed_block.message) == hash_tree_root(signe
 
 #### `AttesterSlashing`
 
-An [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) operation is used to police potentially malicious validator attestation activity that might lead to finalizing two conflicting chains.
+The [`AttesterSlashing`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#attesterslashing) operation is used to police potentially malicious validator attestation activity that might lead to finalizing two conflicting chains.
 
 Specifically, validators can be slashed if they sign two conflicting attestations -- where conflicting is defined by [`is_slashable_attestation_data`](https://github.com/ethereum/eth2.0-specs/blob/v0.10.0/specs/phase0/beacon-chain.md#is_slashable_attestation_data) which checks if the attestations are slashable according to Casper FFG rules (in particular the "double" and "surround" vote conditions).
 
