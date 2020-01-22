@@ -158,7 +158,7 @@ The main benefit of SSZ-tree-hashing is its support for different tree depths wh
 
 The full expansion can be proven for this root. Compositions, and partial datastructures can be proven as well.
 
->**Note:** when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting outer containers.
+>**Note:** when we merklize a container (B) within another container (A), we can replace the embedded B with it's merkle root, without affecting the merklization of A. In other words, in this tree structure, each sub-container / ssz-type is it's own sub-tree. In other words, because of the merklization rules, sub-trees can be replaced by their roots, without affecting the merklization of outer containers.
 
 The type based tree-structure enables efficient proof navigation, and sophisticated caching techniques to be used on consensus objects (e.g. `BeaconState`). **Techniques like these greatly reduce the amount of hashing work that needs to be done at each slot, without compromising the data-type expressiveness of the consensus types.**
 
